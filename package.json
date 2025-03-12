@@ -26,7 +26,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "build": "npm uninstall bcrypt && npm install bcryptjs && npm run build-app",
+    "build": "npm uninstall bcrypt && npm install bcryptjs && npm run build-app"
   },
   "keywords": [],
   "author": "",
