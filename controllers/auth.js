@@ -3,7 +3,7 @@ const User = require('./../models/user');
 const Profile = require('./../models/profile');
 const optGenerator = require('otp-generator');
 const OTP = require('../models/OTP')
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 const cookie = require('cookie');
