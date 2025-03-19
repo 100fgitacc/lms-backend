@@ -75,26 +75,29 @@ exports.deleteCategory = async (req, res) => {
 
 // ================ get All Category ================
 exports.showAllCategories = async (req, res) => {
-    try {
-        // get all category from DB
-        const allCategories = await Category.find({}, { name: true, description: true });
 
-        // return response
+    try {
+
+        const allCategories = await Category.find({}, "name description");
+        if (!allCategories || allCategories.length === 0) {
+            console.log("Category not found.");
+        }
+
         res.status(200).json({
             success: true,
             data: allCategories,
-            message: 'All allCategories fetched successfully'
-        })
-    }
-    catch (error) {
-        console.log('Error while fetching all allCategories');
-        console.log(error);
+            message: 'All categories fetched successfully'
+        });
+
+    } catch (error) {
         res.status(500).json({
             success: false,
-            message: 'Error while fetching all allCategories'
-        })
+            message: 'Error while fetching categories',
+            error: error.message
+        });
     }
-}
+};
+
 
 
 
@@ -102,10 +105,7 @@ exports.showAllCategories = async (req, res) => {
 exports.getCategoryPageDetails = async (req, res) => {
     try {
         const { categoryId } = req.body;
-        console.log("Request received with categoryId:", categoryId);
 
-        // Get courses for the specified category
-        console.log("Fetching category with id:", categoryId);
         const selectedCategory = await Category.findById(categoryId)
             .populate({
                 path: "courses",
@@ -114,8 +114,6 @@ exports.getCategoryPageDetails = async (req, res) => {
             })
             .exec();
 
-        console.log("Fetched selectedCategory:", selectedCategory);
-        
         // Handle the case when the category is not found
         if (!selectedCategory) {
             console.log("Category not found.");
@@ -124,7 +122,6 @@ exports.getCategoryPageDetails = async (req, res) => {
 
         // Handle the case when there are no courses
         if (selectedCategory.courses.length === 0) {
-            console.log("No courses found for the selected category.");
             return res.status(404).json({
                 success: false,
                 data: null,
@@ -132,18 +129,12 @@ exports.getCategoryPageDetails = async (req, res) => {
             });
         }
 
-        console.log("Courses found for selected category:", selectedCategory.courses.length);
 
-        // Get courses for other categories
-        console.log("Fetching categories except selected category...");
         const categoriesExceptSelected = await Category.find({
             _id: { $ne: categoryId },
         });
 
-        console.log("Categories except selected:", categoriesExceptSelected.length);
-        
         let randomCategoryId = categoriesExceptSelected[getRandomInt(categoriesExceptSelected.length)]._id;
-        console.log("Randomly selected different category ID:", randomCategoryId);
 
         let differentCategory = await Category.findOne(randomCategoryId)
             .populate({
@@ -151,11 +142,6 @@ exports.getCategoryPageDetails = async (req, res) => {
                 match: { status: "Published" },
             })
             .exec();
-
-        console.log("Fetched different category:", differentCategory);
-
-        // Get top-selling courses across all categories
-        console.log("Fetching all categories to get top-selling courses...");
         const allCategories = await Category.find()
             .populate({
                 path: "courses",
@@ -165,17 +151,11 @@ exports.getCategoryPageDetails = async (req, res) => {
                 },
             })
             .exec();
-
-        console.log("Fetched all categories. Number of categories:", allCategories.length);
-        
         const allCourses = allCategories.flatMap((category) => category.courses);
-        console.log("Total number of courses across all categories:", allCourses.length);
 
         const mostSellingCourses = allCourses
             .sort((a, b) => b.sold - a.sold)
             .slice(0, 10);
-
-        console.log("Top-selling courses:", mostSellingCourses.length);
 
         res.status(200).json({
             success: true,

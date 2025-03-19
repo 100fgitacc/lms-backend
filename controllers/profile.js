@@ -202,7 +202,9 @@ exports.updateUserProfileImage = async (req, res) => {
 exports.getEnrolledCourses = async (req, res) => {
     try {
         const userId = req.user.id
-        let userDetails = await User.findOne({ _id: userId, })
+        console.log("Received request for user ID:", userId)
+
+        let userDetails = await User.findOne({ _id: userId })
             .populate({
                 path: "courses",
                 populate: {
@@ -214,21 +216,43 @@ exports.getEnrolledCourses = async (req, res) => {
             })
             .exec()
 
-        userDetails = userDetails.toObject()
+        if (!userDetails) {
+            console.log(`User not found with id: ${userId}`)
+            return res.status(400).json({
+                success: false,
+                message: `Could not find user with id: ${userId}`,
+            })
+        }
 
+        console.log("Fetched user details:", userDetails)
+
+        userDetails = userDetails.toObject()
         var SubsectionLength = 0
+
         for (var i = 0; i < userDetails.courses.length; i++) {
             let totalDurationInSeconds = 0
             SubsectionLength = 0
-            for (var j = 0; j < userDetails.courses[i].courseContent.length; j++) {
-                totalDurationInSeconds += userDetails.courses[i].courseContent[
-                    j
-                ].subSection.reduce((acc, curr) => acc + parseInt(curr.timeDuration), 0)
+            console.log(`Processing course ${i + 1}:`, userDetails.courses[i].courseName)
 
+            for (var j = 0; j < userDetails.courses[i].courseContent.length; j++) {
+                console.log(`Processing course content ${j + 1} for course ${userDetails.courses[i].courseName}`)
+
+                // Calculate total duration of course content
+                totalDurationInSeconds += userDetails.courses[i].courseContent[j].subSection.reduce(
+                    (acc, curr) => acc + parseInt(curr.timeDuration),
+                    0
+                )
+
+                // Convert total duration to human-readable format
                 userDetails.courses[i].totalDuration = convertSecondsToDuration(totalDurationInSeconds)
+
+                // Count total number of subsections
                 SubsectionLength += userDetails.courses[i].courseContent[j].subSection.length
             }
 
+            console.log(`Total subsections for course ${userDetails.courses[i].courseName}:`, SubsectionLength)
+
+            // Get course progress
             let courseProgressCount = await CourseProgress.findOne({
                 courseID: userDetails.courses[i]._id,
                 userId: userId,
@@ -236,34 +260,35 @@ exports.getEnrolledCourses = async (req, res) => {
 
             courseProgressCount = courseProgressCount?.completedVideos.length
 
+            console.log(`Course progress for ${userDetails.courses[i].courseName}:`, courseProgressCount)
+
+            // Calculate progress percentage
             if (SubsectionLength === 0) {
                 userDetails.courses[i].progressPercentage = 100
             } else {
-                // To make it up to 2 decimal point
                 const multiplier = Math.pow(10, 2)
                 userDetails.courses[i].progressPercentage =
                     Math.round((courseProgressCount / SubsectionLength) * 100 * multiplier) / multiplier
             }
+
+            console.log(`Progress percentage for course ${userDetails.courses[i].courseName}:`, userDetails.courses[i].progressPercentage)
         }
 
-        if (!userDetails) {
-            return res.status(400).json({
-                success: false,
-                message: `Could not find user with id: ${userDetails}`,
-            })
-        }
+        console.log("Final user details:", userDetails)
 
         return res.status(200).json({
             success: true,
             data: userDetails.courses,
         })
     } catch (error) {
+        console.error("Error occurred:", error)  // Log the actual error
         return res.status(500).json({
             success: false,
             message: error.message,
         })
     }
 }
+
 
 
 
