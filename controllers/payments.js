@@ -27,10 +27,9 @@ exports.capturePayment = async (req, res) => {
     }
 
     let totalAmount = 0;
-
+    let course;
     // Обрабатываем каждый курс
     for (const course_id of coursesId) {
-        let course;
         try {
             // Ищем курс по ID
             course = await Course.findById(course_id);
@@ -43,7 +42,6 @@ exports.capturePayment = async (req, res) => {
             if (course.studentsEnrolled.includes(uid)) {
                 return res.status(400).json({ success: false, message: "Student is already Enrolled" });
             }
-
             // Суммируем стоимость курсов
             totalAmount += course.price;
         } catch (error) {
@@ -51,66 +49,70 @@ exports.capturePayment = async (req, res) => {
             return res.status(500).json({ success: false, message: error.message });
         }
     }
-
-    
-    // Создаем запрос для создания заказа PayPal
-    const orderRequest = new paypal.orders.OrdersCreateRequest();
-    orderRequest.requestBody({
-        intent: 'CAPTURE',  // Указание на захват платежа
-        purchase_units: [{
-            amount: {
-                currency_code: 'USD',  // Ваша валюта (можно использовать другую)
-                value: totalAmount.toFixed(2)  // Форматируем сумму с двумя знаками после запятой
-            }
-        }]
-    });
-
-    try {
-        // Отправка запроса для создания заказа в PayPal
-        const orderResponse = await client.execute(orderRequest);
-
-        // Ответ от PayPal, который будет отправлен на фронтенд
+    if ( totalAmount <= 0 ) {
         res.status(200).json({
             success: true,
-            message: orderResponse.result,  // Ответ с деталями заказа
+            message: "Free course added",  // Ответ с деталями заказа
             amount: totalAmount  // Сумма, которую нужно оплатить
         });
-    } catch (error) {
-        console.log(error);
-        return res.status(500).json({ success: false, message: "Could not initiate PayPal order" });
-    }
-};
+    }else{
+         // Создаем запрос для создания заказа PayPal
+        const orderRequest = new paypal.orders.OrdersCreateRequest();
+        orderRequest.requestBody({
+            intent: 'CAPTURE',  // Указание на захват платежа
+            purchase_units: [{
+                amount: {
+                    currency_code: 'USD',  // Ваша валюта (можно использовать другую)
+                    value: totalAmount.toFixed(2)  // Форматируем сумму с двумя знаками после запятой
+                }
+            }]
+        });
+        try {
+            // Отправка запроса для создания заказа в PayPal
+            const orderResponse = await client.execute(orderRequest);
 
+            // Ответ от PayPal, который будет отправлен на фронтенд
+            res.status(200).json({
+                success: true,
+                message: orderResponse.result,  // Ответ с деталями заказа
+                amount: totalAmount  // Сумма, которую нужно оплатить
+            });
+        } catch (error) {
+            console.log(error);
+            return res.status(500).json({ success: false, message: "Could not initiate PayPal order" });
+        }
+    }
+   
+
+    
+   
+};
 
 // ================ verify the payment ================
 exports.verifyPayment = async (req, res) => {
-    const { id, coursesId } = req.body;
+    const { id, coursesId, status } = req.body;
     const userId = req.user.id;
 
-    console.log("Received data for payment verification:", { id, coursesId, userId });
 
-    // Проверка на наличие необходимых данных
     if (!id || !coursesId || !userId) {
-        console.log("Missing required data: ", { id, coursesId, userId });
         return res.status(400).json({ success: false, message: "Payment Failed, data not found" });
     }
 
     try {
-        // Пытаемся получить данные о платеже из PayPal
+        if (status === 'COMPLETED' && id === 'FREE_ORDER_ID') {
+            await enrollStudents(coursesId, userId, res);
+            return res.status(200).json({ success: true, message: "Free course enrollment completed" });
+        }
+
         const request = new paypal.orders.OrdersGetRequest(id);
 
         const order = await client.execute(request);
 
-        console.log("PayPal order response:", order);
-
         // Проверяем статус платежа
         if (order.result.status === 'COMPLETED') {
-            console.log("Payment succeeded, proceeding with enrollment...");
-            // Заказ подтвержден, переходим к записи студентов на курс
             await enrollStudents(coursesId, userId, res);
             return res.status(200).json({ success: true, message: "Payment Verified" });
         } else {
-            console.log("Payment failed with status:", order.result.status);
             return res.status(400).json({ success: false, message: "Payment failed" });
         }
     } catch (error) {
