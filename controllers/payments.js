@@ -10,7 +10,6 @@ const { default: mongoose } = require('mongoose')
 
 
 const paypal = require('@paypal/checkout-server-sdk');
-// Инициализация окружения PayPal
 const environment = new paypal.core.SandboxEnvironment(
     process.env.PAYPAL_CLIENT_ID, 
     process.env.PAYPAL_CLIENT_SECRET
@@ -21,28 +20,23 @@ exports.capturePayment = async (req, res) => {
     const { coursesId } = req.body;
     const userId = req.user.id;
 
-    // Проверка наличия ID курса
     if (coursesId.length === 0) {
         return res.json({ success: false, message: "Please provide Course Id" });
     }
 
     let totalAmount = 0;
     let course;
-    // Обрабатываем каждый курс
     for (const course_id of coursesId) {
         try {
-            // Ищем курс по ID
             course = await Course.findById(course_id);
             if (!course) {
                 return res.status(404).json({ success: false, message: "Could not find the course" });
             }
 
-            // Проверяем, не был ли уже зарегистрирован студент на курс
             const uid = new mongoose.Types.ObjectId(userId);
             if (course.studentsEnrolled.includes(uid)) {
                 return res.status(400).json({ success: false, message: "Student is already Enrolled" });
             }
-            // Суммируем стоимость курсов
             totalAmount += course.price;
         } catch (error) {
             console.log(error);
@@ -56,26 +50,23 @@ exports.capturePayment = async (req, res) => {
             amount: totalAmount  // Сумма, которую нужно оплатить
         });
     }else{
-         // Создаем запрос для создания заказа PayPal
         const orderRequest = new paypal.orders.OrdersCreateRequest();
         orderRequest.requestBody({
-            intent: 'CAPTURE',  // Указание на захват платежа
+            intent: 'CAPTURE',  
             purchase_units: [{
                 amount: {
-                    currency_code: 'USD',  // Ваша валюта (можно использовать другую)
-                    value: totalAmount.toFixed(2)  // Форматируем сумму с двумя знаками после запятой
+                    currency_code: 'USD', 
+                    value: totalAmount.toFixed(2)  
                 }
             }]
         });
         try {
-            // Отправка запроса для создания заказа в PayPal
             const orderResponse = await client.execute(orderRequest);
 
-            // Ответ от PayPal, который будет отправлен на фронтенд
             res.status(200).json({
                 success: true,
-                message: orderResponse.result,  // Ответ с деталями заказа
-                amount: totalAmount  // Сумма, которую нужно оплатить
+                message: orderResponse.result,  
+                amount: totalAmount  
             });
         } catch (error) {
             console.log(error);
@@ -108,7 +99,6 @@ exports.verifyPayment = async (req, res) => {
 
         const order = await client.execute(request);
 
-        // Проверяем статус платежа
         if (order.result.status === 'COMPLETED') {
             await enrollStudents(coursesId, userId, res);
             return res.status(200).json({ success: true, message: "Payment Verified" });
@@ -158,12 +148,11 @@ const enrollStudents = async (courses, userId, res) => {
                 { new: true }
             );
 
-            // Отправляем email пользователю
-            const emailResponse = await mailSender(
-                enrolledStudent.email,
-                `Successfully Enrolled into ${enrolledCourse.courseName}`,
-                courseEnrollmentEmail(enrolledCourse.courseName, `${enrolledStudent.firstName}`)
-            );
+            // const emailResponse = await mailSender(
+            //     enrolledStudent.email,
+            //     `Successfully Enrolled into ${enrolledCourse.courseName}`,
+            //     courseEnrollmentEmail(enrolledCourse.courseName, `${enrolledStudent.firstName}`)
+            // );
         } catch (error) {
             console.log(error);
             return res.status(500).json({ success: false, message: error.message });
