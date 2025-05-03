@@ -28,24 +28,3 @@ const mailSender = async (email, title, body) => {
 }
 
 module.exports = mailSender;
-
-const nodemailer = require('nodemailer');
-
-// const mailSender = async (email, title, body) => {
-//     try {
-//         // Тестовый OTP (можно заменить на реальный случайный генератор)
-//         const otp = 123456;  // Генерация 6-значного числа
-
-//         // Логируем OTP вместо отправки email
-//         console.log(`Generated OTP for testing: ${otp}`);
-
-//         // Если хотите, чтобы OTP был отправлен клиенту, просто возвращайте его
-//         return { success: true, otp };  // Отправляем OTP в ответ
-//     }
-//     catch (error) {
-//         console.log('Error while sending mail (mailSender) - ', email);
-//         return { success: false, message: 'Failed to generate OTP' };
-//     }
-// }
-
-// module.exports = mailSender;
