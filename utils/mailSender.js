@@ -19,7 +19,7 @@ const mailSender = async (email, title, body) => {
             html: body
         });
 
-        // console.log('Info of sent mail - ', info);
+        console.log('Info of sent mail - ', info);
         return info;
     }
     catch (error) {
