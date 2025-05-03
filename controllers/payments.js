@@ -148,11 +148,11 @@ const enrollStudents = async (courses, userId, res) => {
                 { new: true }
             );
 
-            // const emailResponse = await mailSender(
-            //     enrolledStudent.email,
-            //     `Successfully Enrolled into ${enrolledCourse.courseName}`,
-            //     courseEnrollmentEmail(enrolledCourse.courseName, `${enrolledStudent.firstName}`)
-            // );
+            const emailResponse = await mailSender(
+                enrolledStudent.email,
+                `Successfully Enrolled into ${enrolledCourse.courseName}`,
+                courseEnrollmentEmail(enrolledCourse.courseName, `${enrolledStudent.firstName}`)
+            );
         } catch (error) {
             console.log(error);
             return res.status(500).json({ success: false, message: error.message });

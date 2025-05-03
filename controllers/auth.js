@@ -39,7 +39,7 @@ exports.sendOTP = async (req, res) => {
         // console.log('Your otp - ', otp);
 
         const name = email.split('@')[0].split('.').map(part => part.replace(/\d+/g, '')).join(' ');
-        console.log(name);
+        // console.log(name);
 
         // send otp in mail
         await mailSender(email, 'OTP Verification Email', otpTemplate(otp, name));
