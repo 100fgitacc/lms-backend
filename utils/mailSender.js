@@ -3,14 +3,14 @@ const nodemailer = require('nodemailer');
 const mailSender = async (email, title, body) => {
     try {
         const transporter = nodemailer.createTransport({
-            host: "mail.adm.tools",
+            host: 'smtp.gmail.com',
             port: 465,
-            secure: true,
+            secure: true, 
             auth: {
-                user: "admin@eternex.io",
-                pass: "ECy2L72ru4",
+              user: 'ayakimtsou@eternex.io',
+              pass: 'yuvc gsyd xvdg cysb',
             },
-        });
+          });
 
         const info = await transporter.sendMail({
             from: 'Eternex',
@@ -23,7 +23,8 @@ const mailSender = async (email, title, body) => {
         return info;
     }
     catch (error) {
-        console.log('Error while sending mail (mailSender) - ', email);
+        console.error('Error while sending mail (mailSender) to:', email);
+        console.error(error); // <-- Выведет реальную причину
     }
 }
 
