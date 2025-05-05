@@ -1,5 +1,3 @@
-const { eventNames } = require("../../models/section");
-
 const otpTemplate = (otp, name) => {
 	return `<!DOCTYPE html>
 	<html>
@@ -12,9 +10,9 @@ const otpTemplate = (otp, name) => {
 				font-family: Arial, sans-serif;
 				font-size: 16px;
 				line-height: 1.4;
-				
 				margin: 0;
 				padding: 0;
+				color: #FFFFFF;
 			}
 	
 			.container {
@@ -22,7 +20,7 @@ const otpTemplate = (otp, name) => {
 				margin: 0 auto;
 				padding: 25px;
 				text-align: center;
-				color:rgb(255, 255, 255);
+				color: #FFFFFF; 
 				background-color: #0c0c2a;
 			}
 	
