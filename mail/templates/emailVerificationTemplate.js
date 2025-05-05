@@ -22,7 +22,7 @@ const otpTemplate = (otp, name) => {
 				margin: 0 auto;
 				padding: 25px;
 				text-align: center;
-				color: #fff;
+				color:rgb(255, 255, 255);
 				background-color: #0c0c2a;
 			}
 	
@@ -40,18 +40,6 @@ const otpTemplate = (otp, name) => {
 			.body {
 				font-size: 16px;
 				margin-bottom: 20px;
-			}
-	
-			.cta {
-				display: inline-block;
-				padding: 10px 20px;
-				background-color: #FFD60A;
-				color: #000000;
-				text-decoration: none;
-				border-radius: 5px;
-				font-size: 16px;
-				font-weight: bold;
-				margin-top: 20px;
 			}
 	
 			.support {
