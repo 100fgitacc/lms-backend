@@ -9,11 +9,10 @@ const otpTemplate = (otp, name) => {
 		<title>OTP Verification Email</title>
 		<style>
 			body {
-				background-color: #0c0c2a;
 				font-family: Arial, sans-serif;
 				font-size: 16px;
 				line-height: 1.4;
-				color: #fff;
+				
 				margin: 0;
 				padding: 0;
 			}
@@ -21,8 +20,10 @@ const otpTemplate = (otp, name) => {
 			.container {
 				max-width: 600px;
 				margin: 0 auto;
-				padding: 20px;
+				padding: 25px;
 				text-align: center;
+				color: #fff;
+				background-color: #0c0c2a;
 			}
 	
 			.logo {

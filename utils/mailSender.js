@@ -3,17 +3,17 @@ const nodemailer = require('nodemailer');
 const mailSender = async (email, title, body) => {
     try {
         const transporter = nodemailer.createTransport({
-            host: 'smtp.gmail.com',
+            host: 'mail.adm.tools',
             port: 465,
             secure: true, 
             auth: {
-              user: 'ayakimtsou@eternex.io',
-              pass: 'yuvc gsyd xvdg cysb',
+              user: 'info@eternex.io',
+              pass: 'Jd9Ac4jK98',
             },
           });
 
         const info = await transporter.sendMail({
-            from: 'Eternex',
+            from: '"Eternex Support" <support@eternex.io>',
             to: email,
             subject: title,
             html: body
