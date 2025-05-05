@@ -13,7 +13,7 @@ const mailSender = async (email, title, body) => {
           });
 
         const info = await transporter.sendMail({
-            from: 'info@eternex.io',
+            from: '"Eternex Support" <info@eternex.io>',
             to: email,
             subject: title,
             html: body
