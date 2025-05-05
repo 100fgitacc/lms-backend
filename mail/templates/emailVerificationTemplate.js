@@ -49,6 +49,9 @@ const otpTemplate = (otp, name) => {
 			.highlight {
 				font-weight: bold;
 			}
+			* {
+				color: #FFFFFF !important; 
+			}
 		</style>
 	
 	</head>
