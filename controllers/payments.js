@@ -116,25 +116,42 @@ exports.verifyPayment = async (req, res) => {
 // ================ enroll Students to course after payment ================
 const enrollStudents = async (courses, userId, res) => {
     if (!courses || !userId) {
-        return res.status(400).json({ success: false, message: "Please Provide data for Courses or UserId" });
+        return res.status(400).json({ success: false, message: "Please provide courses and userId" });
     }
 
     for (const courseId of courses) {
         try {
-            const enrolledCourse = await Course.findOneAndUpdate(
-                { _id: courseId },
-                { $push: { studentsEnrolled: userId } },
-                { new: true }
-            );
+            const enrolledCourse = await Course.findById(courseId).populate({
+                path: 'courseContent',
+                populate: {
+                    path: 'subSection',
+                    model: 'SubSection'
+                }
+            });
 
             if (!enrolledCourse) {
-                return res.status(500).json({ success: false, message: "Course not Found" });
+                return res.status(404).json({ success: false, message: "Course not found" });
             }
+
+            // Находим первый урок
+            const firstSection = enrolledCourse.courseContent?.[0];
+            const firstSubSection = firstSection?.subSection?.[0]?._id;
+
+            // Добавляем студента с датой
+            await Course.findByIdAndUpdate(courseId, {
+                $push: {
+                    studentsEnrolled: {
+                        user: userId,
+                        enrolledAt: new Date()
+                    }
+                }
+            });
 
             const courseProgress = await CourseProgress.create({
                 courseID: courseId,
-                userId: userId,
+                userId,
                 completedVideos: [],
+                currentSubSection: firstSubSection || null
             });
 
             const enrolledStudent = await User.findByIdAndUpdate(
@@ -148,17 +165,19 @@ const enrollStudents = async (courses, userId, res) => {
                 { new: true }
             );
 
-            const emailResponse = await mailSender(
+            await mailSender(
                 enrolledStudent.email,
                 `Successfully Enrolled into ${enrolledCourse.courseName}`,
-                courseEnrollmentEmail(enrolledCourse.courseName, `${enrolledStudent.firstName}`)
+                courseEnrollmentEmail(enrolledCourse.courseName, enrolledStudent.firstName)
             );
+
         } catch (error) {
             console.log(error);
             return res.status(500).json({ success: false, message: error.message });
         }
     }
 }
+
 
 // ================ send Payment Success Email ================
 exports.sendPaymentSuccessEmail = async (req, res) => {

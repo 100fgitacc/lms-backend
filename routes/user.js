@@ -17,8 +17,8 @@ const {
 
 
 // Middleware
-const { auth, isAdmin } = require('../middleware/auth');
-const { getAllStudents, getAllInstructors } = require('../controllers/profile');
+const { auth, isAdmin, isAdminOrInstruktor } = require('../middleware/auth');
+const { getAllStudents, getAllInstructors, getStudentsByInstructor } = require('../controllers/profile');
 
 
 // Routes for Login, Signup, and Authentication
@@ -56,6 +56,7 @@ router.post("/reset-password", resetPassword)
 //                                     Only for Admin - getAllStudents & getAllInstructors
 // ********************************************************************************************************
 
+router.get("/all-students-by-instructor", auth, isAdminOrInstruktor, getStudentsByInstructor)
 router.get("/all-students", auth, isAdmin, getAllStudents)
 router.get("/all-instructors", auth, isAdmin, getAllInstructors)
 

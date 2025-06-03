@@ -38,6 +38,7 @@ exports.auth = (req, res, next) => {
             //     exp: 1699538846
             //   }
             req.user = decode;
+             // go to next middleware
         }
         catch (error) {
             console.log('Error while decoding token');
@@ -122,6 +123,30 @@ exports.isAdmin = (req, res, next) => {
             })
         }
         // go to next middleware
+        next();
+    }
+    catch (error) {
+        console.log('Error while cheching user validity with Admin accountType');
+        console.log(error);
+        return res.status(500).json({
+            success: false,
+            error: error.message,
+            messgae: 'Error while cheching user validity with Admin accountType'
+        })
+    }
+}
+
+// ================ IS ADMIN OR INSTRUCTOR ================
+exports.isAdminOrInstruktor = (req, res, next) => {
+    try {
+        if (req.user.accountType === 'Student') {
+            return res.status(401).json({
+                success: false,
+                messgae: 'This Page is protected not for Student'
+            })
+        }
+        // go to next middleware
+        
         next();
     }
     catch (error) {

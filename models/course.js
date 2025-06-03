@@ -43,9 +43,14 @@ const courseSchema = new mongoose.Schema({
     },
     studentsEnrolled: [
         {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'User',
-            required: true
+            user: {
+              type: mongoose.Schema.Types.ObjectId,
+              ref: 'User'
+            },
+            enrolledAt: {
+              type: Date,
+              default: Date.now
+            }
         }
     ],
     instructions: {
