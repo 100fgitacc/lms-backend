@@ -12,7 +12,15 @@ const subSectionSchema = new mongoose.Schema({
     },
     videoUrl: {
         type: String
-    }
+    },
+    allowSkip: {
+    type: Boolean,
+    default: false,
+    },
+    enableSeek: {
+        type: Boolean,
+        default: false, 
+    },
 
 });
 

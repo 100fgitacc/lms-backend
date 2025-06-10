@@ -29,7 +29,8 @@ const courseProgressSchema = new mongoose.Schema(
     completedAt: {
       type: Date,
       default: null
-    }
+    },
+    allowedToSkip: [{ type: mongoose.Schema.Types.ObjectId, ref: "SubSection" }],
   },
   { timestamps: true }
 );

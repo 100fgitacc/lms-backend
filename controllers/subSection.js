@@ -8,7 +8,7 @@ const { uploadImageToCloudinary } = require('../utils/imageUploader');
 exports.createSubSection = async (req, res) => {
     try {
         // extract data
-        const { title, description, sectionId } = req.body;
+        const { title, description, sectionId, allowSkip } = req.body;
 
         // extract video file
         const videoFile = req.files.video
@@ -26,8 +26,13 @@ exports.createSubSection = async (req, res) => {
         const videoFileDetails = await uploadImageToCloudinary(videoFile, process.env.FOLDER_NAME);
 
         // create entry in DB
-        const SubSectionDetails = await SubSection.create(
-            { title, timeDuration: videoFileDetails.duration, description, videoUrl: videoFileDetails.secure_url })
+        const SubSectionDetails = await SubSection.create({
+            title,
+            timeDuration: videoFileDetails.duration,
+            description,
+            videoUrl: videoFileDetails.secure_url,
+            allowSkip: allowSkip === 'true' || allowSkip === true, 
+        });
 
         // link subsection id to section
         // Update the corresponding section with the newly created sub-section
@@ -59,65 +64,67 @@ exports.createSubSection = async (req, res) => {
 
 // ================ Update SubSection ================
 exports.updateSubSection = async (req, res) => {
-    try {
-        const { sectionId, subSectionId, title, description } = req.body;
-
-        // validation
-        if (!subSectionId) {
-            return res.status(400).json({
-                success: false,
-                message: 'subSection ID is required to update'
-            });
-        }
-
-        // find in DB
-        const subSection = await SubSection.findById(subSectionId);
-
-        if (!subSection) {
-            return res.status(404).json({
-                success: false,
-                message: "SubSection not found",
-            })
-        }
-
-        // add data
-        if (title) {
-            subSection.title = title;
-        }
-
-        if (description) {
-            subSection.description = description;
-        }
-
-        // upload video to cloudinary
-        if (req.files && req.files.videoFile !== undefined) {
-            const video = req.files.videoFile;
-            const uploadDetails = await uploadImageToCloudinary(video, process.env.FOLDER_NAME);
-            subSection.videoUrl = uploadDetails.secure_url;
-            subSection.timeDuration = uploadDetails.duration;
-        }
-
-        // save data to DB
-        await subSection.save();
-
-        const updatedSection = await Section.findById(sectionId).populate("subSection")
-
-        return res.json({
-            success: true,
-            data: updatedSection,
-            message: "Section updated successfully",
-        });
+  try {
+    const { sectionId, subSectionId, title, description, allowSkip,enableSeek } = req.body;
+    // validation
+    if (!subSectionId) {
+      return res.status(400).json({
+        success: false,
+        message: 'subSection ID is required to update'
+      });
     }
-    catch (error) {
-        console.error('Error while updating the section')
-        console.error(error)
-        return res.status(500).json({
-            success: false,
-            error: error.message,
-            message: "Error while updating the section",
-        })
+
+    // find in DB
+    const subSection = await SubSection.findById(subSectionId);
+    if (!subSection) {
+      return res.status(404).json({
+        success: false,
+        message: "SubSection not found",
+      });
     }
-}
+
+    // update title and description
+    if (title) subSection.title = title;
+    if (description) subSection.description = description;
+
+    // update allowSkip (parse to boolean from string, since it's coming from FormData)
+    if (allowSkip !== undefined) {
+      subSection.allowSkip = allowSkip === "true" || allowSkip === true;
+    }
+    if (enableSeek !== undefined) {
+      subSection.enableSeek = enableSeek === "true" || enableSeek === true;
+    }
+    
+
+    // upload new video if provided
+    if (req.files && req.files.video !== undefined) {
+      const video = req.files.video;
+      const uploadDetails = await uploadImageToCloudinary(video, process.env.FOLDER_NAME);
+      subSection.videoUrl = uploadDetails.secure_url;
+      subSection.timeDuration = uploadDetails.duration;
+    }
+
+    // save to DB
+    await subSection.save();
+
+    // return updated section with populated subSections
+    const updatedSection = await Section.findById(sectionId).populate("subSection");
+    return res.status(200).json({
+      success: true,
+      data: updatedSection,
+      message: "SubSection updated successfully",
+    });
+  } catch (error) {
+    console.error('Error while updating the section');
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      error: error.message,
+      message: "Error while updating the section",
+    });
+  }
+};
+
 
 
 

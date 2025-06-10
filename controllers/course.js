@@ -247,6 +247,7 @@ exports.getFullCourseDetails = async (req, res) => {
             courseID: courseId,
             userId: userId,
         })
+        .populate('allowedToSkip');
 
         //   console.log("courseProgressCount : ", courseProgressCount)
 
@@ -276,12 +277,13 @@ exports.getFullCourseDetails = async (req, res) => {
         const totalDuration = convertSecondsToDuration(totalDurationInSeconds)
 
         return res.status(200).json({
-            success: true,
-            data: {
-                courseDetails,
-                totalDuration,
-                completedVideos: courseProgressCount?.completedVideos ? courseProgressCount?.completedVideos : [],
-            },
+        success: true,
+        data: {
+            courseDetails,
+            totalDuration,
+            completedVideos: courseProgressCount?.completedVideos || [],
+            allowedToSkip: courseProgressCount?.allowedToSkip || [],
+        },
         })
     } catch (error) {
         return res.status(500).json({
