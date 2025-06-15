@@ -21,7 +21,31 @@ const subSectionSchema = new mongoose.Schema({
         type: Boolean,
         default: false, 
     },
-
+    homeworks: [
+      {
+        type: {
+          type: String,
+          enum: ["text", "link", "file"],
+          required: true,
+        },
+        value: {
+          type: mongoose.Schema.Types.Mixed, 
+          required: true,
+        }
+      }
+    ],
+    requiresHomeworkCheck: {
+      type: Boolean,
+      default: false
+    },
+    minScore: {
+    type: Number,
+    default: null,
+    },
+    maxScore: {
+      type: Number,
+      default: null,
+    },
 });
 
 module.exports = mongoose.model('SubSection', subSectionSchema) 

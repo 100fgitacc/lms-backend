@@ -1,20 +1,44 @@
 const cloudinary = require('cloudinary').v2;
 
-exports.uploadImageToCloudinary = async (file, folder, height, quality) => {
-    try {
-        const options = { folder };
-        if (height) options.height = height;
-        if (quality) options.quality = quality;
+exports.uploadMediaToCloudinary = async (file, folder) => {
+  try {
+    const options = {
+      folder,
+      resource_type: 'auto',
+    };
+    return await cloudinary.uploader.upload(file.tempFilePath, options);
+  } catch (error) {
+    console.error("Error uploading media:", error);
+    throw error;
+  }
+};
 
-        // options.resourse_type = 'auto';
-        options.resource_type = 'auto';
-        return await cloudinary.uploader.upload(file.tempFilePath, options);
-    }
-    catch (error) {
-        console.log("Error while uploading image");
-        console.log(error);
-    }
-}
+exports.uploadRawFileToCloudinary = async (file, folder) => {
+  try {
+    const originalName = file.name; 
+    const extension = originalName.substring(originalName.lastIndexOf('.') + 1);
+    const publicId = originalName.replace(`.${extension}`, '');
+
+    const options = {
+      folder,
+      resource_type: 'raw',
+      use_filename: true,
+      unique_filename: false,
+      overwrite: true,
+      public_id: publicId,
+    };
+
+    const uploadResult = await cloudinary.uploader.upload(file.tempFilePath, options);
+
+    return {
+      url: uploadResult.secure_url,
+      filename: originalName,
+    };
+  } catch (error) {
+    console.error("Error uploading raw file:", error);
+    throw error;
+  }
+};
 
 
 

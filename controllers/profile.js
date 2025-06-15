@@ -344,7 +344,6 @@ exports.getAllStudents = async (req, res) => {
       students.map(async (student) => {
         const updatedCourses = await Promise.all(
           student.courses.map(async (course) => {
-            // Подсчет общего времени и количества под-секций
             let totalDurationInSeconds = 0;
             let totalSubsections = 0;
 
@@ -359,7 +358,6 @@ exports.getAllStudents = async (req, res) => {
             course = course.toObject();
             course.totalDuration = convertSecondsToDuration(totalDurationInSeconds);
 
-            // Получение прогресса
             const courseProgress = await CourseProgress.findOne({
               userId: student._id,
               courseID: course._id,
