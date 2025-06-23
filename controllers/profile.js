@@ -2,6 +2,7 @@ const Profile = require('../models/profile');
 const User = require('../models/user');
 const CourseProgress = require('../models/courseProgress')
 const Course = require('../models/course')
+const HomeworksModel = require("../models/homeworks");
 
 const { uploadImageToCloudinary, deleteResourceFromCloudinary } = require('../utils/imageUploader');
 const { convertSecondsToDuration } = require('../utils/secToDuration')
@@ -150,8 +151,6 @@ exports.getUserDetails = async (req, res) => {
     }
 }
 
-
-
 // ================ Update User profile Image ================
 exports.updateUserProfileImage = async (req, res) => {
     try {
@@ -194,9 +193,6 @@ exports.updateUserProfileImage = async (req, res) => {
         })
     }
 }
-
-
-
 
 // ================ Get Enrolled Courses ================
 exports.getEnrolledCourses = async (req, res) => {
@@ -461,22 +457,23 @@ exports.getStudentsByInstructor = async (req, res) => {
       const studentsWithProgress = await Promise.all(
         students.map(async (student) => {
           const studentObj = student.toObject();
-  
+
           const studentCourses = instructorCourses.filter(course => {
             return Array.isArray(course.studentsEnrolled) && course.studentsEnrolled.some(e => {
               return e?.user?.toString() === student._id.toString();
             });
           });
+
           const updatedCourses = await Promise.all(
             studentCourses.map(async (course) => {
               await course.populate({
                 path: "courseContent",
                 populate: { path: "subSection" }
               });
-  
+
               let totalDurationInSeconds = 0;
               let totalSubsections = 0;
-  
+
               for (const section of course.courseContent) {
                 totalSubsections += section.subSection.length;
                 totalDurationInSeconds += section.subSection.reduce(
@@ -484,35 +481,50 @@ exports.getStudentsByInstructor = async (req, res) => {
                   0
                 );
               }
-  
+
               const courseObj = course.toObject();
               courseObj.totalDuration = convertSecondsToDuration(totalDurationInSeconds);
-  
+
               const courseProgress = await CourseProgress.findOne({
                 userId: student._id,
                 courseID: course._id,
               }).populate("currentSubSection");
-              
+
               const completedCount = courseProgress?.completedVideos.length || 0;
-              
+
               courseObj.progressPercentage =
                 totalSubsections === 0
                   ? 100
                   : Math.round((completedCount / totalSubsections) * 10000) / 100;
-              
+
               courseObj.startedAt = courseProgress?.startedAt || null;   
               courseObj.completedAt = courseProgress?.completedAt || null;
               courseObj.currentSubSection = courseProgress?.currentSubSection || null;
               courseObj.currentLessonTitle = courseProgress?.currentSubSection?.title || null;
-  
+
+              const homeworks = await HomeworksModel.find({
+                user: student._id,
+                course: course._id
+              }).lean();
+
+              const homeworksBySubSection = {};
+              homeworks.forEach(hw => {
+                const subId = hw.subSection?.toString();
+                if (!homeworksBySubSection[subId]) homeworksBySubSection[subId] = [];
+                homeworksBySubSection[subId].push(hw);
+              });
+
+              courseObj.homeworksBySubSection = homeworksBySubSection;
+
               return courseObj;
             })
           );
-  
+
           studentObj.courses = updatedCourses;
           return studentObj;
         })
       );
+
   
       res.status(200).json({
         allStudentsDetails: studentsWithProgress,

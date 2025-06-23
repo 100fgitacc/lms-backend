@@ -31,11 +31,9 @@ exports.updateCourseProgress = async (req, res) => {
       return res.status(400).json({ error: "Subsection already completed" });
     }
 
-    // Добавляем текущий сабсекшн в пройденные
     courseProgress.completedVideos.push(subsectionId);
     courseProgress.currentSubSection = subsectionId;
 
-    // Получаем курс со всеми секциями и сабсекциями
     const course = await Course.findById(courseId).populate({
       path: "courseContent",
       populate: {
@@ -48,7 +46,6 @@ exports.updateCourseProgress = async (req, res) => {
       return res.status(404).json({ error: "Course not found" });
     }
 
-    // Собираем все сабсекции в один массив
     const allSubsections = course.courseContent.flatMap(
       (section) => section.subSection
     );
@@ -57,7 +54,6 @@ exports.updateCourseProgress = async (req, res) => {
       (sub) => sub._id.toString() === subsectionId
     );
 
-    // Разрешаем скипнуть следующую сабсекцию, если такая есть
     if (currentIndex !== -1 && currentIndex < allSubsections.length - 1) {
       const nextSub = allSubsections[currentIndex + 1];
       const alreadyAllowed = courseProgress.allowedToSkip.some(
@@ -68,7 +64,6 @@ exports.updateCourseProgress = async (req, res) => {
       }
     }
 
-    // Проверяем, завершён ли курс
     const allSubsectionIds = allSubsections.map((sub) => sub._id.toString());
     const completedSet = new Set(
       courseProgress.completedVideos.map((id) => id.toString())
@@ -82,7 +77,6 @@ exports.updateCourseProgress = async (req, res) => {
       courseProgress.completedAt = new Date();
     }
 
-    // Сохраняем прогресс
     await courseProgress.save();
 
     return res.status(200).json({ message: "Course progress updated" });

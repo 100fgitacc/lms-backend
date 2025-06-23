@@ -49,6 +49,13 @@ const {
     getAllRatingReview
 } = require('../controllers/ratingAndReview');
 
+// homework controllers
+const {
+    sendHomework,
+    getHomeworkBySubSection,
+    updateHomeworkStatus
+} = require('../controllers/homework');
+
 
 // Middlewares
 const { auth, isAdmin, isInstructor, isStudent } = require('../middleware/auth')
@@ -116,6 +123,22 @@ router.post("/getCategoryPageDetails", getCategoryPageDetails)
 router.post('/createRating', auth, isStudent, createRating);
 router.get('/getAverageRating', getAverageRating);
 router.get('/getReviews', getAllRatingReview);
+
+
+
+
+// ********************************************************************************************************
+//                                      Homeworks router
+// ********************************************************************************************************
+
+router.post('/sendHomework', auth, isStudent, sendHomework);
+router.get('/getHomeworkBySubSection/:subSectionId', auth, isStudent, getHomeworkBySubSection)
+router.post("/updateHomeworkStatus", auth, isInstructor,updateHomeworkStatus);
+
+
+
+
+
 
 
 module.exports = router;

@@ -4,19 +4,28 @@ const { uploadMediaToCloudinary, uploadRawFileToCloudinary } = require('../utils
 
 
 
-// ================ create SubSection ================
+// ================ Create SubSection ================
 exports.createSubSection = async (req, res) => {
   try {
-    const { title, description, sectionId, allowSkip, enableSeek, homeworks,
-      requiresHomeworkCheck, minScore, maxScore 
-     } = req.body;
+    const {
+      title,
+      description,
+      sectionId,
+      allowSkip,
+      enableSeek,
+      homeworks,
+      requiresHomeworkCheck,
+      minScore,
+      maxScore,
+    } = req.body;
+
     const videoFile = req.files?.video;
     const homeworkFile = req.files?.homeworkFile;
 
     if (!title || !description || !videoFile || !sectionId) {
       return res.status(400).json({
         success: false,
-        message: "All fields are required",
+        message: "All required fields must be provided",
       });
     }
 
@@ -29,12 +38,15 @@ exports.createSubSection = async (req, res) => {
       if (homeworkFile && parsedHomeworks.some(hw => hw.type === "file")) {
         const uploadedFile = await uploadRawFileToCloudinary(homeworkFile, process.env.FOLDER_NAME);
         parsedHomeworks = parsedHomeworks.map(hw =>
-          hw.type === "file" ? { ...hw, value: { url: uploadedFile.url, filename: uploadedFile.filename } } : hw
+          hw.type === "file"
+            ? { ...hw, value: { url: uploadedFile.url, filename: uploadedFile.filename } }
+            : hw
         );
       }
     }
 
-     const SubSectionDetails = await SubSection.create({
+    // Build payload object conditionally including minScore and maxScore
+    const subsectionPayload = {
       title,
       timeDuration: videoFileDetails.duration,
       description,
@@ -43,12 +55,20 @@ exports.createSubSection = async (req, res) => {
       enableSeek: ["true", true].includes(enableSeek),
       homeworks: parsedHomeworks,
       requiresHomeworkCheck: ["true", true].includes(requiresHomeworkCheck),
-      minScore: requiresHomeworkCheck ? Number(minScore) : undefined,
-      maxScore: requiresHomeworkCheck ? Number(maxScore) : undefined,
-    });
+    };
+
+    if (subsectionPayload.requiresHomeworkCheck && !isNaN(Number(minScore))) {
+      subsectionPayload.minScore = Number(minScore);
+    }
+
+    if (subsectionPayload.requiresHomeworkCheck && !isNaN(Number(maxScore))) {
+      subsectionPayload.maxScore = Number(maxScore);
+    }
+
+    const SubSectionDetails = await SubSection.create(subsectionPayload);
 
     const updatedSection = await Section.findByIdAndUpdate(
-      { _id: sectionId },
+      sectionId,
       { $push: { subSection: SubSectionDetails._id } },
       { new: true }
     ).populate("subSection");
@@ -59,7 +79,7 @@ exports.createSubSection = async (req, res) => {
       message: "SubSection created successfully",
     });
   } catch (error) {
-    console.log("Error while creating SubSection:", error);
+    console.error("Error while creating SubSection:", error);
     res.status(500).json({
       success: false,
       message: "Error while creating SubSection",
@@ -68,19 +88,28 @@ exports.createSubSection = async (req, res) => {
   }
 };
 
-
-
-
 // ================ Update SubSection ================
 exports.updateSubSection = async (req, res) => {
   try {
-    const { sectionId, subSectionId, title, description, allowSkip, enableSeek, homeworks, requiresHomeworkCheck, minScore, maxScore  } = req.body;
+    const {
+      sectionId,
+      subSectionId,
+      title,
+      description,
+      allowSkip,
+      enableSeek,
+      homeworks,
+      requiresHomeworkCheck,
+      minScore,
+      maxScore,
+    } = req.body;
+
     const homeworkFile = req.files?.homeworkFile;
 
     if (!subSectionId) {
       return res.status(400).json({
         success: false,
-        message: "subSection ID is required to update",
+        message: "SubSection ID is required for update",
       });
     }
 
@@ -94,6 +123,7 @@ exports.updateSubSection = async (req, res) => {
 
     if (title) subSection.title = title;
     if (description) subSection.description = description;
+
     if (allowSkip !== undefined) {
       subSection.allowSkip = allowSkip === "true" || allowSkip === true;
     }
@@ -112,10 +142,12 @@ exports.updateSubSection = async (req, res) => {
             if (hw.type === "file") {
               return {
                 ...hw,
-                value: uploadedFile ? {
-                  url: uploadedFile.url,
-                  filename: uploadedFile.filename
-                } : undefined
+                value: uploadedFile
+                  ? {
+                      url: uploadedFile.url,
+                      filename: uploadedFile.filename,
+                    }
+                  : undefined,
               };
             }
             return hw;
@@ -133,7 +165,7 @@ exports.updateSubSection = async (req, res) => {
         if (!allValid) {
           return res.status(400).json({
             success: false,
-            message: "Некоторые задания не имеют значения value",
+            message: "Some homework items are missing their value",
           });
         }
 
@@ -141,14 +173,31 @@ exports.updateSubSection = async (req, res) => {
       } catch (e) {
         return res.status(400).json({
           success: false,
-          message: "Неверный формат для homeworks. Должен быть JSON-строкой.",
+          message: "Invalid format for homeworks. Must be a JSON string.",
         });
       }
     }
+
     if (requiresHomeworkCheck !== undefined) {
-      subSection.requiresHomeworkCheck = requiresHomeworkCheck === "true" || requiresHomeworkCheck === true;
-      subSection.minScore = subSection.requiresHomeworkCheck ? Number(minScore) : undefined;
-      subSection.maxScore = subSection.requiresHomeworkCheck ? Number(maxScore) : undefined;
+      const requiresCheck = requiresHomeworkCheck === "true" || requiresHomeworkCheck === true;
+      subSection.requiresHomeworkCheck = requiresCheck;
+
+      if (requiresCheck) {
+        if (!isNaN(Number(minScore))) {
+          subSection.minScore = Number(minScore);
+        } else {
+          delete subSection.minScore;
+        }
+
+        if (!isNaN(Number(maxScore))) {
+          subSection.maxScore = Number(maxScore);
+        } else {
+          delete subSection.maxScore;
+        }
+      } else {
+        delete subSection.minScore;
+        delete subSection.maxScore;
+      }
     }
 
     if (req.files?.video) {
@@ -160,20 +209,22 @@ exports.updateSubSection = async (req, res) => {
     await subSection.save();
 
     const updatedSection = await Section.findById(sectionId).populate("subSection");
+
     return res.status(200).json({
       success: true,
       data: updatedSection,
       message: "SubSection updated successfully",
     });
   } catch (error) {
-    console.error("Error while updating the section:", error);
+    console.error("Error while updating SubSection:", error);
     return res.status(500).json({
       success: false,
+      message: "Error while updating SubSection",
       error: error.message,
-      message: "Error while updating the section",
     });
   }
 };
+
 
 
 

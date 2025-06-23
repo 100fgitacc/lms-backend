@@ -5,7 +5,7 @@ const Section = require('../models/section')
 const SubSection = require('../models/subSection')
 const CourseProgress = require('../models/courseProgress')
 
-const { uploadImageToCloudinary, deleteResourceFromCloudinary } = require('../utils/imageUploader');
+const { uploadMediaToCloudinary, deleteResourceFromCloudinary } = require('../utils/imageUploader');
 const { convertSecondsToDuration } = require("../utils/secToDuration")
 
 
@@ -55,7 +55,7 @@ exports.createCourse = async (req, res) => {
 
 
         // upload thumbnail to cloudinary
-        const thumbnailDetails = await uploadImageToCloudinary(thumbnail, process.env.FOLDER_NAME);
+        const thumbnailDetails = await uploadMediaToCloudinary(thumbnail, process.env.FOLDER_NAME);
 
         // create new course - entry in DB
         const newCourse = await Course.create({
@@ -310,7 +310,7 @@ exports.editCourse = async (req, res) => {
         if (req.files) {
             // console.log("thumbnail update")
             const thumbnail = req.files.thumbnailImage
-            const thumbnailImage = await uploadImageToCloudinary(
+            const thumbnailImage = await uploadMediaToCloudinary(
                 thumbnail,
                 process.env.FOLDER_NAME
             )
