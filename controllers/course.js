@@ -7,7 +7,7 @@ const CourseProgress = require('../models/courseProgress')
 
 const { uploadMediaToCloudinary, deleteResourceFromCloudinary } = require('../utils/imageUploader');
 const { convertSecondsToDuration } = require("../utils/secToDuration")
-
+const mongoose = require("mongoose");
 
 
 // ================ create new course ================
@@ -372,31 +372,68 @@ exports.editCourse = async (req, res) => {
 
 
 // ================ Get a list of Course for a given Instructor ================
+
+
 exports.getInstructorCourses = async (req, res) => {
-    try {
-        // Get the instructor ID from the authenticated user or request body
-        const instructorId = req.user.id
+  try {
+    const instructorId = req.user.id;
 
-        // Find all courses belonging to the instructor
-        const instructorCourses = await Course.find({ instructor: instructorId, }).sort({ createdAt: -1 })
+    const instructorCourses = await Course.aggregate([
+      {
+        $match: {
+          instructor: new mongoose.Types.ObjectId(instructorId),
+        },
+      },
+      {
+        $lookup: {
+          from: "homeworks",
+          let: { courseId: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$course", "$$courseId"] },
+                    { $eq: ["$status", "not_reviewed"] },
+                  ],
+                },
+              },
+            },
+          ],
+          as: "notReviewedHomeworks",
+        },
+      },
+      {
+        $addFields: {
+          notReviewedCount: { $size: "$notReviewedHomeworks" },
+        },
+      },
+      {
+        $sort: { createdAt: -1 },
+      },
+      {
+        $project: {
+          notReviewedHomeworks: 0,
+        },
+      },
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: instructorCourses,
+      message: "Courses with not reviewed homework count fetched successfully",
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve instructor courses",
+      error: error.message,
+    });
+  }
+};
 
 
-        // Return the instructor's courses
-        res.status(200).json({
-            success: true,
-            data: instructorCourses,
-            // totalDurationInSeconds:totalDurationInSeconds,
-            message: 'Courses made by Instructor fetched successfully'
-        })
-    } catch (error) {
-        console.error(error)
-        res.status(500).json({
-            success: false,
-            message: "Failed to retrieve instructor courses",
-            error: error.message,
-        })
-    }
-}
 
 
 
