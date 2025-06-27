@@ -17,6 +17,8 @@ exports.createSubSection = async (req, res) => {
       requiresHomeworkCheck,
       minScore,
       maxScore,
+      delayedHomeworkCheck,
+      homeworkDelaySeconds,
     } = req.body;
 
     const videoFile = req.files?.video;
@@ -64,6 +66,9 @@ exports.createSubSection = async (req, res) => {
     if (subsectionPayload.requiresHomeworkCheck && !isNaN(Number(maxScore))) {
       subsectionPayload.maxScore = Number(maxScore);
     }
+    if (subsectionPayload.delayedHomeworkCheck && !isNaN(Number(homeworkDelaySeconds))) {
+      subsectionPayload.homeworkDelaySeconds = Number(homeworkDelaySeconds);
+    }
 
     const SubSectionDetails = await SubSection.create(subsectionPayload);
 
@@ -102,6 +107,8 @@ exports.updateSubSection = async (req, res) => {
       requiresHomeworkCheck,
       minScore,
       maxScore,
+      delayedHomeworkCheck,
+      homeworkDelaySeconds,
     } = req.body;
 
     const homeworkFile = req.files?.homeworkFile;
@@ -197,6 +204,19 @@ exports.updateSubSection = async (req, res) => {
       } else {
         delete subSection.minScore;
         delete subSection.maxScore;
+      }
+    }
+    if (delayedHomeworkCheck !== undefined) {
+      subSection.delayedHomeworkCheck = delayedHomeworkCheck === "true" || delayedHomeworkCheck === true;
+
+      if (subSection.delayedHomeworkCheck) {
+        if (!isNaN(Number(homeworkDelaySeconds))) {
+          subSection.homeworkDelaySeconds = Number(homeworkDelaySeconds);
+        } else {
+          delete subSection.homeworkDelaySeconds;
+        }
+      } else {
+        subSection.homeworkDelaySeconds = 0;
       }
     }
 

@@ -14,8 +14,15 @@ const courseProgressSchema = new mongoose.Schema(
     },
     completedVideos: [
       {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'SubSection'
+        subSectionId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'SubSection',
+          required: true
+        },
+        completedAt: {
+          type: Date,
+          default: Date.now
+        }
       }
     ],
     currentSubSection: {

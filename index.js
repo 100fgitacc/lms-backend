@@ -1,4 +1,5 @@
 const express = require('express')
+
 const app = express();
 
 // packages
@@ -10,6 +11,10 @@ require('dotenv').config();
 // connection to DB and cloudinary
 const { connectDB } = require('./config/database');
 const { cloudinaryConnect } = require('./config/cloudinary');
+
+
+
+require("./cron/autoCheckHomework");
 
 // routes
 const userRoutes = require('./routes/user');
@@ -57,3 +62,4 @@ app.get('/', (req, res) => {
     <p>Everything is OK</p>
     </div>`);
 })
+

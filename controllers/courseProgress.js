@@ -8,7 +8,6 @@ const CourseProgress = require("../models/courseProgress")
 exports.updateCourseProgress = async (req, res) => {
   const { courseId, subsectionId } = req.body;
   const userId = req.user.id;
-
   try {
     const subsection = await SubSection.findById(subsectionId);
     if (!subsection) {
@@ -27,11 +26,19 @@ exports.updateCourseProgress = async (req, res) => {
       });
     }
 
-    if (courseProgress.completedVideos.includes(subsectionId)) {
+  const isCompleted = courseProgress.completedVideos.some(
+    (entry) => entry.subSectionId && entry.subSectionId.toString() === subsectionId.toString()
+  );
+
+    if (isCompleted) {
       return res.status(400).json({ error: "Subsection already completed" });
     }
 
-    courseProgress.completedVideos.push(subsectionId);
+    courseProgress.completedVideos.push({
+      subSectionId: subsectionId,
+      completedAt: new Date(),
+    });
+
     courseProgress.currentSubSection = subsectionId;
 
     const course = await Course.findById(courseId).populate({
@@ -51,7 +58,7 @@ exports.updateCourseProgress = async (req, res) => {
     );
 
     const currentIndex = allSubsections.findIndex(
-      (sub) => sub._id.toString() === subsectionId
+      (sub) => sub._id.toString() === subsectionId.toString()
     );
 
     if (currentIndex !== -1 && currentIndex < allSubsections.length - 1) {
@@ -66,7 +73,9 @@ exports.updateCourseProgress = async (req, res) => {
 
     const allSubsectionIds = allSubsections.map((sub) => sub._id.toString());
     const completedSet = new Set(
-      courseProgress.completedVideos.map((id) => id.toString())
+      courseProgress.completedVideos
+        .filter(entry => entry.subSectionId)
+        .map(entry => entry.subSectionId.toString())
     );
 
     const allCompleted =
@@ -86,7 +95,75 @@ exports.updateCourseProgress = async (req, res) => {
   }
 };
 
+// ================ autoupdate Course Progress ================
 
+exports.updateCourseProgressInternal = async ({ userId, courseId, subsectionId }) => {
+  const subsection = await SubSection.findById(subsectionId);
+  if (!subsection) throw new Error("Invalid subsection");
+
+  const courseProgress = await CourseProgress.findOne({
+    courseID: courseId,
+    userId: userId,
+  });
+
+  if (!courseProgress) throw new Error("Course progress does not exist");
+
+  const isCompleted = courseProgress.completedVideos.some(
+    (entry) =>
+      entry.subSectionId &&
+      entry.subSectionId.toString() === subsectionId.toString()
+  );
+
+  if (!isCompleted) {
+    courseProgress.completedVideos.push({
+      subSectionId: subsectionId,
+      completedAt: new Date(),
+    });
+    courseProgress.currentSubSection = subsectionId;
+  }
+
+  const course = await Course.findById(courseId).populate({
+    path: "courseContent",
+    populate: {
+      path: "subSection",
+      model: "SubSection",
+    },
+  });
+
+  if (!course) throw new Error("Course not found");
+
+  const allSubsections = course.courseContent.flatMap((section) => section.subSection);
+  const currentIndex = allSubsections.findIndex(
+    (sub) => sub._id.toString() === subsectionId.toString()
+  );
+
+  if (currentIndex !== -1 && currentIndex < allSubsections.length - 1) {
+    const nextSub = allSubsections[currentIndex + 1];
+    const alreadyAllowed = courseProgress.allowedToSkip.some(
+      (id) => id.toString() === nextSub._id.toString()
+    );
+    if (!alreadyAllowed) {
+      courseProgress.allowedToSkip.push(nextSub._id);
+    }
+  }
+
+  const allSubsectionIds = allSubsections.map((sub) => sub._id.toString());
+  const completedSet = new Set(
+    courseProgress.completedVideos
+      .filter((entry) => entry.subSectionId)
+      .map((entry) => entry.subSectionId.toString())
+  );
+
+  const allCompleted =
+    allSubsectionIds.length > 0 &&
+    allSubsectionIds.every((id) => completedSet.has(id));
+
+  if (allCompleted && !courseProgress.completedAt) {
+    courseProgress.completedAt = new Date();
+  }
+
+  await courseProgress.save();
+};
 
 
 

@@ -425,118 +425,213 @@ exports.getAllInstructors = async (req, res) => {
     }
 }
 // ================ get Students by Instructor ================
+
+
+function formatLastActivity(date) {
+  if (!date) return null;
+
+  const now = new Date();
+  const diffMs = now - new Date(date);
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 1) {
+    return "today";
+  } else if (diffDays <= 30) {
+    return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
+  } else {
+    const diffMonths = Math.floor(diffDays / 30);
+    if (diffMonths < 12) {
+      return `${diffMonths} month${diffMonths > 1 ? "s" : ""} ago`;
+    } else {
+      const diffYears = Math.floor(diffMonths / 12);
+      return `${diffYears} year${diffYears > 1 ? "s" : ""} ago`;
+    }
+  }
+}
+
+
 exports.getStudentsByInstructor = async (req, res) => {
-    try {
-      const instructorId = req.user.id;
+  try {
+    const instructorId = req.user.id;
 
-      const instructorCourses = await Course.find({ instructor: instructorId });
-  
-      if (instructorCourses.length === 0) {
-        return res.status(200).json({
-          allStudentsDetails: [],
-          studentsCount: 0,
-          message: "This instructor havent any student",
-        });
-      }
-  
-      const studentIdsSet = new Set();
-      for (const course of instructorCourses) {
-        for (const enrollment of course.studentsEnrolled) {
-          if (enrollment?.user) {
-            studentIdsSet.add(enrollment.user.toString());
-          }
-        }
-      }
-  
-      const studentIds = Array.from(studentIdsSet);
-  
-      const students = await User.find({ _id: { $in: studentIds } })
-        .populate("additionalDetails")
-        .sort({ createdAt: -1 });
-  
-      const studentsWithProgress = await Promise.all(
-        students.map(async (student) => {
-          const studentObj = student.toObject();
+    const instructorCourses = await Course.find({ instructor: instructorId });
 
-          const studentCourses = instructorCourses.filter(course => {
-            return Array.isArray(course.studentsEnrolled) && course.studentsEnrolled.some(e => {
-              return e?.user?.toString() === student._id.toString();
-            });
-          });
-
-          const updatedCourses = await Promise.all(
-            studentCourses.map(async (course) => {
-              await course.populate({
-                path: "courseContent",
-                populate: { path: "subSection" }
-              });
-
-              let totalDurationInSeconds = 0;
-              let totalSubsections = 0;
-
-              for (const section of course.courseContent) {
-                totalSubsections += section.subSection.length;
-                totalDurationInSeconds += section.subSection.reduce(
-                  (sum, sub) => sum + parseInt(sub.timeDuration || 0),
-                  0
-                );
-              }
-
-              const courseObj = course.toObject();
-              courseObj.totalDuration = convertSecondsToDuration(totalDurationInSeconds);
-
-              const courseProgress = await CourseProgress.findOne({
-                userId: student._id,
-                courseID: course._id,
-              }).populate("currentSubSection");
-
-              const completedCount = courseProgress?.completedVideos.length || 0;
-
-              courseObj.progressPercentage =
-                totalSubsections === 0
-                  ? 100
-                  : Math.round((completedCount / totalSubsections) * 10000) / 100;
-
-              courseObj.startedAt = courseProgress?.startedAt || null;   
-              courseObj.completedAt = courseProgress?.completedAt || null;
-              courseObj.currentSubSection = courseProgress?.currentSubSection || null;
-              courseObj.currentLessonTitle = courseProgress?.currentSubSection?.title || null;
-
-              const homeworks = await HomeworksModel.find({
-                user: student._id,
-                course: course._id
-              }).lean();
-
-              const homeworksBySubSection = {};
-              homeworks.forEach(hw => {
-                const subId = hw.subSection?.toString();
-                if (!homeworksBySubSection[subId]) homeworksBySubSection[subId] = [];
-                homeworksBySubSection[subId].push(hw);
-              });
-
-              courseObj.homeworksBySubSection = homeworksBySubSection;
-
-              return courseObj;
-            })
-          );
-
-          studentObj.courses = updatedCourses;
-          return studentObj;
-        })
-      );
-
-  
-      res.status(200).json({
-        allStudentsDetails: studentsWithProgress,
-        studentsCount: studentsWithProgress.length,
-        message: "success",
-      });
-    } catch (error) {
-      console.error("error:", error);
-      res.status(500).json({
-        message: "error",
-        error: error.message,
+    if (instructorCourses.length === 0) {
+      return res.status(200).json({
+        allStudentsDetails: [],
+        studentsCount: 0,
+        message: "This instructor hasn't any student",
       });
     }
-  };
-  
+
+    const studentIdsSet = new Set();
+    for (const course of instructorCourses) {
+      for (const enrollment of course.studentsEnrolled) {
+        if (enrollment?.user) {
+          studentIdsSet.add(enrollment.user.toString());
+        }
+      }
+    }
+
+    const studentIds = Array.from(studentIdsSet);
+
+    const students = await User.find({ _id: { $in: studentIds } })
+      .populate("additionalDetails")
+      .sort({ createdAt: -1 });
+
+    const studentsWithProgress = await Promise.all(
+      students.map(async (student) => {
+        const studentObj = student.toObject();
+
+        const studentCourses = instructorCourses.filter(course => {
+          return Array.isArray(course.studentsEnrolled) && course.studentsEnrolled.some(e => {
+            return e?.user?.toString() === student._id.toString();
+          });
+        });
+
+        const updatedCourses = await Promise.all(
+          studentCourses.map(async (course) => {
+            await course.populate({
+              path: "courseContent",
+              populate: { path: "subSection" }
+            });
+
+            let totalDurationInSeconds = 0;
+            let totalSubsections = 0;
+
+            for (const section of course.courseContent) {
+              totalSubsections += section.subSection.length;
+              totalDurationInSeconds += section.subSection.reduce(
+                (sum, sub) => sum + parseInt(sub.timeDuration || 0),
+                0
+              );
+            }
+
+            const courseObj = course.toObject();
+            courseObj.totalDuration = convertSecondsToDuration(totalDurationInSeconds);
+
+            const courseProgress = await CourseProgress.findOne({
+              userId: student._id,
+              courseID: course._id,
+            }).populate("currentSubSection");
+
+            const completedCount = courseProgress?.completedVideos.length || 0;
+
+            courseObj.progressPercentage =
+              totalSubsections === 0
+                ? 100
+                : Math.round((completedCount / totalSubsections) * 10000) / 100;
+
+            courseObj.startedAt = courseProgress?.startedAt || null;
+            courseObj.completedAt = courseProgress?.completedAt || null;
+            courseObj.currentSubSection = courseProgress?.currentSubSection || null;
+
+            const homeworks = await HomeworksModel.find({
+              user: student._id,
+              course: course._id
+            }).lean();
+
+            const homeworksBySubSection = {};
+            homeworks.forEach(hw => {
+              const subId = hw.subSection?.toString();
+              if (!homeworksBySubSection[subId]) homeworksBySubSection[subId] = [];
+              homeworksBySubSection[subId].push(hw);
+            });
+
+            courseObj.homeworksBySubSection = homeworksBySubSection;
+
+            let lastCompleted = null;
+            let nextPending = null;
+
+            const subSectionMap = new Map();
+            course.courseContent.forEach(section => {
+              section.subSection.forEach(sub => {
+                subSectionMap.set(sub._id.toString(), sub);
+              });
+            });
+
+            const completedMap = new Map();
+            (courseProgress?.completedVideos || []).forEach(entry => {
+              if (entry.subSectionId) {
+                completedMap.set(entry.subSectionId.toString(), entry.completedAt);
+              }
+            });
+
+            for (const [subId, completedAt] of completedMap.entries()) {
+              const sub = subSectionMap.get(subId);
+              if (!sub) continue;
+
+              const hws = homeworksBySubSection[subId] || [];
+              const hw = hws[0];
+              const hwStatus = hw?.status || "not_started";
+
+              const isFullyCompleted = completedAt && (!hw || hwStatus === "reviewed");
+
+              if (isFullyCompleted) {
+                if (
+                  !lastCompleted ||
+                  new Date(completedAt) > new Date(lastCompleted.completedAt)
+                ) {
+                  lastCompleted = {
+                    id: sub._id,
+                    title: sub.title,
+                    completedAt,
+                  };
+                }
+              }
+            }
+
+            outerLoop:
+            for (const section of course.courseContent) {
+              for (const sub of section.subSection) {
+                const completedAt = completedMap.get(sub._id.toString());
+                const hws = homeworksBySubSection[sub._id.toString()] || [];
+                const hw = hws[0];
+                const hwStatus = hw?.status || "not_started";
+
+                const isFullyCompleted = completedAt && (!hw || hwStatus === "reviewed");
+
+                if (!isFullyCompleted) {
+                  let reason = "not_started";
+                  if (hwStatus === "not_reviewed") reason = "waiting for review";
+                  else if (hwStatus === "resubmission") reason = "resubmission required";
+
+                  nextPending = {
+                    id: sub._id,
+                    title: sub.title,
+                    reason,
+                  };
+                  break outerLoop;
+                }
+              }
+            }
+
+            courseObj.currentLesson = {
+              lastCompleted,
+              nextPending,
+            };
+            courseObj.lastActivity = lastCompleted ? formatLastActivity(lastCompleted.completedAt) : null;
+            return courseObj;
+          })
+        );
+
+        studentObj.courses = updatedCourses;
+
+        return studentObj;
+      })
+    );
+
+    res.status(200).json({
+      allStudentsDetails: studentsWithProgress,
+      studentsCount: studentsWithProgress.length,
+      message: "success",
+    });
+  } catch (error) {
+    console.error("error:", error);
+    res.status(500).json({
+      message: "error",
+      error: error.message,
+    });
+  }
+};
+

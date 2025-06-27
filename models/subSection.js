@@ -46,6 +46,14 @@ const subSectionSchema = new mongoose.Schema({
       type: Number,
       default: null,
     },
+    delayedHomeworkCheck: { 
+      type: Boolean, 
+      default: false 
+    },
+    homeworkDelaySeconds: { 
+      type: Number, 
+      default: 0 
+    },
 });
 
 module.exports = mongoose.model('SubSection', subSectionSchema) 
