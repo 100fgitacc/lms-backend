@@ -57,6 +57,7 @@ exports.createSubSection = async (req, res) => {
       enableSeek: ["true", true].includes(enableSeek),
       homeworks: parsedHomeworks,
       requiresHomeworkCheck: ["true", true].includes(requiresHomeworkCheck),
+      delayedHomeworkCheck: ["true", true].includes(delayedHomeworkCheck)
     };
 
     if (subsectionPayload.requiresHomeworkCheck && !isNaN(Number(minScore))) {

@@ -12,40 +12,55 @@ cron.schedule("*/5 * * * *", async () => {
       status: "not_reviewed",
     });
 
+    console.log(`[CRON] Found ${pendingHomeworks.length} homework(s) pending review`);
+
     const now = Date.now();
 
     for (const hw of pendingHomeworks) {
-      const subSection = await SubSection.findById(hw.subSection);
+  console.log(`[CRON] Checking homework ID: ${hw._id} submitted by user: ${hw.user}`);
 
-      if (!subSection) continue;
+  const subSection = await SubSection.findById(hw.subSection);
+  if (!subSection) {
+    console.log(`[CRON] SubSection not found for homework ID: ${hw._id}`);
+    continue;
+  }
 
-      if (subSection.delayedHomeworkCheck && subSection.homeworkDelaySeconds > 0) {
-        const submittedAt = new Date(hw.submittedAt).getTime();
-        const delayMs = subSection.homeworkDelaySeconds * 1000;
+  if (!subSection.delayedHomeworkCheck || subSection.homeworkDelaySeconds <= 0) {
+    console.log(`[SKIPPED] Delayed check for hw ${hw._id} is ${
+      !subSection.delayedHomeworkCheck ? "disabled" : "missing or zero delaySeconds"
+    }.`);
+    continue;
+  }
 
-        if (now >= submittedAt + delayMs) {
-            hw.reviewed = true;
-            hw.status = "reviewed";
+  const submittedAt = new Date(hw.submittedAt).getTime();
+  const delayMs = subSection.homeworkDelaySeconds * 1000;
 
-            if (subSection.requiresHomeworkCheck && subSection.maxScore !== null) {
-            hw.score = subSection.maxScore;
-            hw.feedback = "Automatically accepted after delay.";
-            } else {
-            hw.feedback = "Automatically marked as reviewed.";
-            }
+  if (Date.now() >= submittedAt + delayMs) {
+    hw.reviewed = true;
+    hw.status = "reviewed";
 
-            await hw.save();
-            await updateCourseProgressInternal({
-            userId: hw.user,
-            courseId: hw.course,
-            subsectionId: hw.subSection,
-            });
-
-          console.log(`[AUTO-CHECKED] Homework ID: ${hw._id} (user: ${hw.user})`);
-        }
-      }
+    if (subSection.requiresHomeworkCheck && subSection.maxScore !== null) {
+      hw.score = subSection.maxScore;
+      hw.feedback = "Automatically accepted after delay.";
+    } else {
+      hw.feedback = "Automatically marked as reviewed.";
     }
+
+    await hw.save();
+    await updateCourseProgressInternal({
+      userId: hw.user,
+      courseId: hw.course,
+      subsectionId: hw.subSection,
+    });
+
+    console.log(`[AUTO-CHECKED] Homework ID: ${hw._id} (user: ${hw.user})`);
+  }
+}
+
+
+    console.log("[CRON] Auto-check run completed.\n");
   } catch (err) {
     console.error("[CRON ERROR] Auto-check failed:", err);
   }
 });
+

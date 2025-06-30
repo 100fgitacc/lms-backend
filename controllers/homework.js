@@ -103,15 +103,19 @@ exports.updateHomeworkStatus = async (req, res) => {
 
       if (progress) {
         const alreadyCompleted = progress.completedVideos.some(
-          (id) => id.toString() === homework.subSection.toString()
+          (item) => item.subSectionId.toString() === homework.subSection.toString()
         );
 
         if (!alreadyCompleted) {
-          progress.completedVideos.push(homework.subSection);
+          progress.completedVideos.push({
+            subSectionId: homework.subSection,
+            completedAt: new Date(),
+          });
           await progress.save();
         }
       }
     }
+
 
     return res.status(200).json({ success: true, homework });
   } catch (error) {
