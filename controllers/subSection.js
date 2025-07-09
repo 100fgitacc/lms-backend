@@ -111,6 +111,8 @@ exports.updateSubSection = async (req, res) => {
       delayedHomeworkCheck,
       homeworkDelaySeconds,
     } = req.body;
+    console.log(req.body);
+    
 
     const homeworkFile = req.files?.homeworkFile;
 
@@ -143,17 +145,17 @@ exports.updateSubSection = async (req, res) => {
       try {
         let parsedHomeworks = JSON.parse(homeworks);
 
-        if (homeworkFile && parsedHomeworks.some(hw => hw.type === "file")) {
+        if (homeworkFile && parsedHomeworks.some(hw => hw.type === "file" && hw.value === "__NEW_FILE__")) {
           const uploadedFile = await uploadRawFileToCloudinary(homeworkFile, process.env.FOLDER_NAME);
 
           parsedHomeworks = parsedHomeworks.map(hw => {
-            if (hw.type === "file") {
+            if (hw.type === "file" && hw.value === "__NEW_FILE__") {
               return {
                 ...hw,
                 value: uploadedFile
                   ? {
-                      url: uploadedFile.url,
-                      filename: uploadedFile.filename,
+                      url: uploadedFile.secure_url || uploadedFile.url,
+                      filename: uploadedFile.original_filename || uploadedFile.filename,
                     }
                   : undefined,
               };
@@ -162,6 +164,7 @@ exports.updateSubSection = async (req, res) => {
           });
         }
 
+        // Валидация - проверяем что в файлах есть url и filename
         const allValid = parsedHomeworks.every(hw => {
           if (!hw.value) return false;
           if (hw.type === "file") {
@@ -185,6 +188,7 @@ exports.updateSubSection = async (req, res) => {
         });
       }
     }
+
 
     if (requiresHomeworkCheck !== undefined) {
       const requiresCheck = requiresHomeworkCheck === "true" || requiresHomeworkCheck === true;

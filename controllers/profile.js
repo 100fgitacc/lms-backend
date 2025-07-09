@@ -193,11 +193,10 @@ exports.updateUserProfileImage = async (req, res) => {
         })
     }
 }
-
 // ================ Get Enrolled Courses ================
 exports.getEnrolledCourses = async (req, res) => {
     try {
-        const userId = req.user.id
+        const userId = req.user.id;
 
         let userDetails = await User.findOne({ _id: userId })
             .populate({
@@ -209,73 +208,71 @@ exports.getEnrolledCourses = async (req, res) => {
                     },
                 },
             })
-            .exec()
+            .exec();
 
         if (!userDetails) {
-            console.log(`User not found with id: ${userId}`)
             return res.status(400).json({
                 success: false,
                 message: `Could not find user with id: ${userId}`,
-            })
+            });
         }
 
+        userDetails = userDetails.toObject();
 
-        userDetails = userDetails.toObject()
-        var SubsectionLength = 0
+        for (let i = 0; i < userDetails.courses.length; i++) {
+            let totalDurationInSeconds = 0;
+            let subsectionLength = 0;
+            const course = userDetails.courses[i];
+            const validSubsectionIds = [];
 
-        for (var i = 0; i < userDetails.courses.length; i++) {
-            let totalDurationInSeconds = 0
-            SubsectionLength = 0
+            for (let j = 0; j < course.courseContent.length; j++) {
+                const section = course.courseContent[j];
 
-            for (var j = 0; j < userDetails.courses[i].courseContent.length; j++) {
-           
-                // Calculate total duration of course content
-                totalDurationInSeconds += userDetails.courses[i].courseContent[j].subSection.reduce(
+                totalDurationInSeconds += section.subSection.reduce(
                     (acc, curr) => acc + parseInt(curr.timeDuration),
                     0
-                )
+                );
 
-                // Convert total duration to human-readable format
-                userDetails.courses[i].totalDuration = convertSecondsToDuration(totalDurationInSeconds)
+                section.subSection.forEach((sub) => {
+                    validSubsectionIds.push(sub._id.toString());
+                });
 
-                // Count total number of subsections
-                SubsectionLength += userDetails.courses[i].courseContent[j].subSection.length
+                subsectionLength += section.subSection.length;
             }
 
+            course.totalDuration = convertSecondsToDuration(totalDurationInSeconds);
 
-            // Get course progress
-            let courseProgressCount = await CourseProgress.findOne({
-                courseID: userDetails.courses[i]._id,
+            const courseProgress = await CourseProgress.findOne({
+                courseID: course._id,
                 userId: userId,
-            })
+            });
 
-            courseProgressCount = courseProgressCount?.completedVideos.length
+            const completedValidVideos = courseProgress?.completedVideos.filter((item) =>
+                validSubsectionIds.includes(item.subSectionId.toString())
+            ) || [];
 
-            // Calculate progress percentage
-            if (SubsectionLength === 0) {
-                userDetails.courses[i].progressPercentage = 100
+            const courseProgressCount = completedValidVideos.length;
+
+            if (subsectionLength === 0) {
+                course.progressPercentage = 100;
             } else {
-                const multiplier = Math.pow(10, 2)
-                userDetails.courses[i].progressPercentage =
-                    Math.round((courseProgressCount / SubsectionLength) * 100 * multiplier) / multiplier
+                const multiplier = Math.pow(10, 2);
+                course.progressPercentage =
+                    Math.round((courseProgressCount / subsectionLength) * 100 * multiplier) / multiplier;
             }
-
-          
         }
-
 
         return res.status(200).json({
             success: true,
             data: userDetails.courses,
-        })
+        });
     } catch (error) {
-        console.error("Error occurred:", error)  // Log the actual error
         return res.status(500).json({
             success: false,
             message: error.message,
-        })
+        });
     }
-}
+};
 
 
 
