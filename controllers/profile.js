@@ -247,19 +247,45 @@ exports.getEnrolledCourses = async (req, res) => {
                 userId: userId,
             });
 
-            const completedValidVideos = courseProgress?.completedVideos.filter((item) =>
-                validSubsectionIds.includes(item.subSectionId.toString())
-            ) || [];
+          const completedValidVideos = courseProgress?.completedVideos.filter((item) =>
+              validSubsectionIds.includes(item.subSectionId.toString())
+          ) || [];
 
-            const courseProgressCount = completedValidVideos.length;
+          const courseProgressCount = completedValidVideos.length;
 
-            if (subsectionLength === 0) {
-                course.progressPercentage = 100;
-            } else {
-                const multiplier = Math.pow(10, 2);
-                course.progressPercentage =
-                    Math.round((courseProgressCount / subsectionLength) * 100 * multiplier) / multiplier;
-            }
+          if (subsectionLength === 0) {
+              course.progressPercentage = 100;
+          } else {
+              const multiplier = Math.pow(10, 2);
+              course.progressPercentage =
+                  Math.round((courseProgressCount / subsectionLength) * 100 * multiplier) / multiplier;
+          }
+
+          let totalScore = 0;
+          let maxPossibleScore = 0;
+
+          for (let j = 0; j < course.courseContent.length; j++) {
+              const section = course.courseContent[j];
+              for (const sub of section.subSection) {
+                  if (sub.requiresHomeworkCheck && sub.maxScore) {
+                      const studentHomework = await HomeworksModel.findOne({
+                          course: course._id,
+                          user: userId,
+                          subSection: sub._id,
+                          status: 'reviewed',
+                      });
+
+                      if (studentHomework && typeof studentHomework.score === 'number') {
+                          totalScore += studentHomework.score;
+                      }
+
+                      maxPossibleScore += sub.maxScore;
+                  }
+              }
+          }
+
+          course.totalScore = totalScore;
+          course.maxPossibleScore = maxPossibleScore;
         }
 
         return res.status(200).json({

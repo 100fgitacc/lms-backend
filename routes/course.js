@@ -15,7 +15,7 @@ const {
 
 } = require('../controllers/course')
 
-const { updateCourseProgress } = require('../controllers/courseProgress')
+const { updateCourseProgress, resetLessonProgress } = require('../controllers/courseProgress')
 
 // categories Controllers
 const {
@@ -102,7 +102,7 @@ router.delete("/deleteCourse", auth, isInstructor, deleteCourse)
 // update Course Progress
 router.post("/updateCourseProgress", auth, isStudent, updateCourseProgress)
 
-
+router.post("/reset-lesson", auth, isInstructor, resetLessonProgress);
 
 // ********************************************************************************************************
 //                                      Category routes (Only by Admin)

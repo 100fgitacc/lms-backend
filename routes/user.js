@@ -57,7 +57,7 @@ router.post("/reset-password", resetPassword)
 // ********************************************************************************************************
 
 router.get("/all-students-by-instructor", auth, isAdminOrInstruktor, getStudentsByInstructor)
-router.get("/all-students", auth, isAdmin, getAllStudents)
+router.get("/all-students", auth, getAllStudents)
 router.get("/all-instructors", auth, isAdmin, getAllInstructors)
 
 

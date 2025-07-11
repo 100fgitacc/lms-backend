@@ -2,7 +2,7 @@ const mongoose = require("mongoose")
 const Course = require("../models/course")
 const SubSection = require("../models/subSection")
 const CourseProgress = require("../models/courseProgress")
-
+const Homework = require("../models/homeworks");
 
 // ================ update Course Progress ================
 exports.updateCourseProgress = async (req, res) => {
@@ -166,57 +166,45 @@ exports.updateCourseProgressInternal = async ({ userId, courseId, subsectionId }
 };
 
 
+exports.resetLessonProgress = async (req, res) => {
+  try {
+    const { courseId, subSectionId, studentId } = req.body;
+    if (!courseId || !subSectionId || !studentId) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
 
+    const subSectionIdStr = subSectionId.toString();
 
+    const progress = await CourseProgress.findOne({ courseID: courseId, userId: studentId });
+    if (!progress) return res.status(404).json({ message: "Progress not found" });
 
-// ================ get Progress Percentage ================
-// exports.getProgressPercentage = async (req, res) => {
-//   const { courseId } = req.body
-//   const userId = req.user.id
+    progress.completedVideos = progress.completedVideos.filter(
+      (video) => video.subSectionId.toString() !== subSectionIdStr
+    );
 
-//   if (!courseId) {
-//     return res.status(400).json({ error: "Course ID not provided." })
-//   }
+    if (progress.currentSubSection?.toString() === subSectionIdStr) {
+      progress.currentSubSection = null;
+    }
 
-//   try {
-//     // Find the course progress document for the user and course
-//     let courseProgress = await CourseProgress.findOne({
-//       courseID: courseId,
-//       userId: userId,
-//     })
-//       .populate({
-//         path: "courseID",
-//         populate: {
-//           path: "courseContent",
-//         },
-//       })
-//       .exec()
+    progress.allowedToSkip = progress.allowedToSkip.filter(
+      (id) => id.toString() !== subSectionIdStr
+    );
 
-//     if (!courseProgress) {
-//       return res
-//         .status(400)
-//         .json({ error: "Can not find Course Progress with these IDs." })
-//     }
-//     console.log(courseProgress, userId)
-//     let lectures = 0
-//     courseProgress.courseID.courseContent?.forEach((sec) => {
-//       lectures += sec.subSection.length || 0
-//     })
+    progress.markModified('completedVideos');
+    progress.markModified('allowedToSkip');
 
-//     let progressPercentage =
-//       (courseProgress.completedVideos.length / lectures) * 100
+    await progress.save();
 
-//     // To make it up to 2 decimal point
-//     const multiplier = Math.pow(10, 2)
-//     progressPercentage =
-//       Math.round(progressPercentage * multiplier) / multiplier
+    await Homework.deleteMany({
+      user: studentId,
+      course: courseId,
+      subSection: subSectionId
+    });
 
-//     return res.status(200).json({
-//       data: progressPercentage,
-//       message: "Succesfully fetched Course progress",
-//     })
-//   } catch (error) {
-//     console.error(error)
-//     return res.status(500).json({ error: "Internal server error" })
-//   }
-// }
+    return res.json({ success: true, message: "Lesson progress and homework reset successfully" });
+  } catch (error) {
+    console.error("RESET_LESSON_PROGRESS error:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
