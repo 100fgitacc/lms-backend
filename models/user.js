@@ -61,6 +61,19 @@ const userSchema = new mongoose.Schema(
                 ref: 'CourseProgress'
 
             }
+        ],
+        primaryWallet: {
+            address: String,
+            network: String,
+            name: String,
+        },
+        wallets: [
+            {
+                address: String,
+                network: String,
+                addedAt: Date,
+                name: String,
+            }
         ]
     },// Add timestamps for when the document is created and last modified
     { timestamps: true }
