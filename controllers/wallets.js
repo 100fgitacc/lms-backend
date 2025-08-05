@@ -4,8 +4,9 @@ const User = require("../models/user");
 exports.addWallet = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { address, signature, message, network,name } = req.body;
-
+    const { address, signature, message, network, name } = req.body;
+    console.log(address, signature, message, network, name, userId);
+    
     if (!address || !signature || !message || !network) {
       return res.status(400).json({ success: false, message: "Missing wallet data" });
     }
