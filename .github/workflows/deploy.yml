@@ -1,17 +1,15 @@
 name: Deploy LMS Backend
-
-on:
-  push:
-    branches: [ main ]
-  workflow_dispatch:
-
-concurrency:
-  group: deploy-lms-backend
-  cancel-in-progress: true
+on: { push: { branches: [ main ] }, workflow_dispatch: {} }
+concurrency: { group: deploy-lms-backend, cancel-in-progress: true }
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      SSH_HOST: ${{ secrets.SSH_HOST }}
+      SSH_USER: ${{ secrets.SSH_USER }}
+      SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
+
     steps:
       - uses: actions/checkout@v4
 
@@ -22,28 +20,24 @@ jobs:
 
       - name: Ensure target dir
         run: |
-          ssh -i key.pem -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no \
-            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "mkdir -p /var/www/lms-backend/src"
+          ssh -i key.pem -p "$SSH_PORT" -o StrictHostKeyChecking=no \
+            "$SSH_USER@$SSH_HOST" "mkdir -p /var/www/lms-backend"
 
-      - name: Upload sources (rsync)
+      - name: Upload sources (rsync to /var/www/lms-backend)
         run: |
           rsync -az --delete \
             --exclude '.git' --exclude '.github' --exclude 'node_modules' \
-            -e "ssh -i key.pem -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no" \
-            ./ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/lms-backend/src/
+            --exclude '.env' \
+            -e "ssh -i key.pem -p $SSH_PORT -o StrictHostKeyChecking=no" \
+            ./ "$SSH_USER@$SSH_HOST:/var/www/lms-backend/"
 
-      - name: Install & restart (PM2)
+      - name: Install deps & reload PM2
         run: |
-          ssh -i key.pem -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no \
-            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} '
-              set -e
-              cd /var/www/lms-backend/src
-              npm ci
-              # если TypeScript:
-              # npm run build
-              # и в /var/www/ecosystem.config.js поставь args: "node dist/index.js"
-              cd /var/www
-              pm2 startOrReload ecosystem.config.js --only lms-backend || pm2 startOrReload ecosystem.config.js
-              pm2 save
-            '
-
+          ssh -i key.pem -p "$SSH_PORT" -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" '
+            set -e
+            cd /var/www/lms-backend
+            npm ci
+            cd /var/www
+            pm2 startOrReload ecosystem.config.js --only lms-backend || pm2 start ecosystem.config.js --only lms-backend
+            pm2 save
+          '

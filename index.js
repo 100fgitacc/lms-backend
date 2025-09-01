@@ -36,16 +36,18 @@ app.use(
 )
 
 
-const PORT = process.env.PORT || 5000;
+const PORT = Number(process.env.PORT) || 3001;   // по умолчанию 3001 как в PM2/nginx
+const HOST = process.env.HOST || '0.0.0.0';      // ОБЯЗАТЕЛЬНО 0.0.0.0
 
-app.listen(PORT, () => {
-    console.log(`Server Started on PORT ${PORT}`);
+app.listen(PORT, HOST, () => {
+  console.log(`API running on http://${HOST}:${PORT}`);
 });
 
 // connections
 connectDB();
 cloudinaryConnect();
 
+app.get('/health', (_req, res) => res.status(200).send('ok'));
 // mount route
 app.use('/api/v1/auth', userRoutes);
 app.use('/api/v1/profile', profileRoutes);
