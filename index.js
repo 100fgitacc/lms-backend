@@ -37,7 +37,7 @@ app.use(
 
 
 const PORT = Number(process.env.PORT) || 3001;   // по умолчанию 3001 как в PM2/nginx
-const HOST = process.env.HOST || '0.0.0.0';      // ОБЯЗАТЕЛЬНО 0.0.0.0
+const HOST = process.env.HOST || '127.0.0.1';      // ОБЯЗАТЕЛЬНО 0.0.0.0
 
 app.listen(PORT, HOST, () => {
   console.log(`API running on http://${HOST}:${PORT}`);
